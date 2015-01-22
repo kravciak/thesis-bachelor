@@ -1,0 +1,193 @@
+\chapter{Technológie}
+Na realizáciu praktickej časti potrebujem viacero komponentov (vrstiev), ktoré na seba naväzujú. Táto kapitola je rozdelená podľa jednotlivých funkčných vrstiev. Pri každej vrstve popíšem nástroje, ktoré som využil ako aj niektoré z alternatív. Na záver kapitoly zhrniem niektoré termíny, ktoré majú spojitosť s vysoko dostupnými riešeniami.
+
+%-----------------------------------------------------------------------------------------------------------------------------------------
+\section{Kominukačná vrstva}
+Kominukačná vrstva poskytuje klientom informácie o stave (prítomnosti/neprítomnosti) procesov na jednotlivých strojoch. Ak by sme mali len 2 nódy nebol by systém komunikácie príliš zložitý. Avšak pri zapojení dodatočných strojov komplexnosť tejto vrstvy stúpa. Pri vývoji programov, ktoré tieto funkcie požadujú je vhodnejšie využiť už otestované riešenie ako vyvíjať niečo čo už existuje. Pre názornosť zložitosti, Corosync obsahuje 55000 riadkov C kódu.
+
+V súčasnosti existuje viacero projektov, z nich si predstavíme Heartbeat, Corosync a CMAN, ktoré implementujú nasladujúcu funkcionalitu:
+\begin{itemize}
+	\item spoľahlivý prenos správ medzi nódami
+	\item notifikácie pri prechode stroja do on-line/off-line módu
+	\item udržanie rovnakého zoznam strojov v celom klastri
+\end{itemize}
+
+Pri porovnaní Heartbeat a Corosync zistíme, že oba sú dnes podporované a využívané v produkčných prostrediach, avšak ak sa rozhodujeme ktoré riešenie je vhodnejšie, väčšina odborníkov odporúča Corosync (prevažne kvôli výhľadom do budúcnosti projektov) \cite{web:Heartbeat-vs-OpenAIS}. CMAN je trochu špecifický, avšak tiež ustupuje v prospech Corosyncu.
+
+\subsection{Heartbeat}
+Tento démon vznikol v roku 1999. Vo svojich začiatkoch podporoval len 2 nódy, mal príliš jednoduchý model a nedokázal detekovať výpadky na úrovni služieb. V roku 2003 ale začal Andrew Beekhof pracovať na komplexnejšom systéme a verzia 2.0.0 už obsahovala aj prvé \ac{CRM} s názvom Pacemaker \cite{web:ClusterLabs}.
+
+Heartbeat je súčasťou Linux-HA projektu, ktorý okrem neho vyvíjal aj ďalšie komponenty potrebné pre postavenie vysoko dostupných klastrových systémov, vrátane veľkého množstva resource agentov pre rôzne aplikácie, knižníc a nástrojov ako Stonith, notifikačného systému a \ac{LRM}.
+
+Všetky tieto komponenty sa zo začiatku distribuovali ako kompletné riešenie, teda balík mal všetko potrebné aby mohol klaster plnohodnotne fungovať. Staral sa o komunikáciu, obsahoval Resource Agentov aj \ac{CRM}. Po čase sa jednotlivé komponenty oddelili (napríklad Pacemaker vo verzii 2.1.14) a teraz sa s názvom Heartbeat označuje už len program zabezpečujúci komunikačnú vrstvu.
+
+Heartbeat je starší projekt a jeho vývoj je momentálne pozastavený. Linbit prebral zodpovednosť za jeho udržiavanie, ale vyhlásil že neplánuje pridávať žiadne nové prvky. Z vyjadrenia autorov vyplýva, že bude udržiavaný pokiaľ to bude mať zmysel (pravdepodobne dovtedy, kým ho corosync nenahradí) \cite{web:linux-ha.org}.
+
+\subsection{Corosync}
+Open Source projekt, ktorý sa pôvodne nazýval OpenAIS. Vývojári narazili na problém, kedy sa vývoj začal sústreďovať prevažne na vytváranie infraštruktúry pre rôzne API postavené na OpenAIS. Založili teda nový projekt - Corosync. Použili v ňom približne 80\% pôvodného kódu (jeho stabilné časti - jadro). V roku 2011 vývojári úplne zastavili prácu na OpenAIS a prešli k vývoju Corosyncu. Funcionalita OpenAIS ostala už len vo forme pluginov. Práve tie umožňujú prácu so súborovými systémami GFS2 a OCFS2 \cite{web:openais.org}.
+
+Corosync je aktívne vyvíjaný (nové vývojové verzie sú vydávané v priebehu týždňov) a je momentálne najvhodnejším riešením pre zabezpečenie komunikácie pre Pacemaker \cite{web:ClusterLabs}. Taktiež je podporovaný firmami veľkých mien ako je Red Hat alebo Novell/SUSE.
+
+\subsection{CMAN}
+CMAN je súčasťou balíka RHCS. Zabezpečoval infraštruktúru, ktorú ďalej využíval RGManager. Na klastrovom samite v roku 2008 sa rozhodlo, že nemá zmysel udržiavať vlastné riešenie, pre ktoré sa nedarí získať komunitu. Red Hat sa teda rozhodol podporiť vývoj Corosyncu, čo len zdôrazňuje predpoklad ďalšieho vývoja CMANu. \ac{RHEL} ním už vo verzii 5 nahradil tento komponent, vtedy ešte pod menom OpenAIS. CMAN stále existuje, avšak už len ako quorum modul pre Corosync \cite{pdf:cman}.
+
+\section{Manažér procesov}
+\label{lbl:sec:crm}
+Manažér procesov, taktiež nazývaný \ac{CRM} zodpovedá za spúštanie a zastavovanie procesov. Obsahuje logiku, ktorá zabezpečuje nielen že proces je spustený, ale aj to, že nebeží na viacerých miestach zároveň a predchádza tak poškodeniu dát. Tieto nástroje umožňujú definovať a nakonfigurovať jednotlivé nódy klastra a následne monitorovať procesy, ktoré sú na nich spustené. V prípade výpadku sú zodpovedné za presun procesu na iný, funkčný server v čo najkratšom čase. Tiež umožňujú definovať presné pravidlá, obmedzenia a priority, podľa ktorých budú procesy migrovať ako aj nastaviť ich skupiny a závislosti. Dva z \ac{CRM} systémov dostupných zdarma sú Pacemaker a RGManager.
+
+\subsection{Pacemaker}
+Názov programu vznikol odvodením od prístroja ktorý kontroluje a reguluje činnosť ľudského srdca podobne ako Pacemaker udržiava v chode jednotlivé procesy v počítači. Jeho úlohou je dosiahnutie čo najvyššej dostupnosti služieb. Detekuje chyby jednotlivých procesov alebo celých serverov a pokúša sa ich spustiť v inom - funkčnom prostredí. Pacemaker sa neobmedzuje len na spúštanie procesov - dokáže spustiť čokoľvek, čoho štart sa dá ovládať skriptom, napríklad nastavenie IP adresy, spustenie webového servra alebo pripojenie disku \cite{web:ClusterLabs}.
+
+Skripty ktoré využíva sa delia do dvoch hlavných kategórií:
+\begin{description}
+	\item[OCF] skripty boli napísané podľa špecifikácii Open Cluster Framework. Musia podporovať príkazy start, stop, monitor a meta-data. Prakticky sú rozšírením LSB skriptov
+	\item[LSB] skripty sú štandardné spúštacie skripty, musia teda vyhovovať LSB špecifikácii. Podporujú štandardné príkazy start, stop a status
+\end{description}
+
+Ako komunikačné riešenie využíva už vytvorené programy, aktuálne podporuje Heartbeat a Corosync. Aj keď Pacemaker pôvodne vznikol ako \ac{CRM} pre Linux-HA, ktoré zodpovedalo aj za vznik Heartbeatu, dnes sa uprednostňuje použitie Corosyncu. Taktiež pre využitie časti funkcionality Pacemakeru vyžadujúcej OpenAIS (napríklad práca s GFS2 a OCFS2) musíme ako komunikačnú vrstvu použiť Corosync.
+
+\subsection{RGManager}
+RGManager je súčasťou balíka RHCS. Z vonkajšieho pohľadu poskytuje podobnú funkcionalitu ako Pacemaker. Umožňuje administrátorovi definovať, konfigurovať a monitorovať jednotlivé procesy v klastri, prípadne ich skupiny. Je to dobre otestované riešenie, jeho konfigurácia nie je príliš zložitá. Avšak Pacemaker je pri správe procesov flexibilnejší. Andrew Beekhof ktorý stojí za jeho vývojom sa v diskusiách vyjadril, že plánom Red Hat je rgmanager v priebehu niekoľkých rokov Pacemakerom nahradiť \cite{web:msg00023}.
+
+
+%-----------------------------------------------------------------------------------------------------------------------------------------
+\section{Zdieľané blokové zariadenie}
+\label{lbl:sec:zdielane-blokove-zariadenie}
+Súborové systémy využívajú pre ukladanie dát blokové zariadenie - zvyčajne pevný disk. Ten sa však bez použitia ďalších technológií nachádza v jednej fyzickej lokalite, čo vedie k problémom pri zabezpečení jeho dostupnosti. Preto zvniklo viacero technológií, ktoré umožňujú blokové zariadenia zdieľať aj na väčšie vzdialenosti.
+
+Je dôležité poznamenať, že technológie zmieňované v tejto sekcii sa zameriavajú na zdieľanie blokového zariadenia - nie súborového systému. Takéto zariadenia je možné pomocou siete pripojiť k počítaču a následne ho využívať ako lokálne zariadenie (disk). Pred jeho použitím je teda nutné vytvoriť partície a súborový systém.
+
+Príkladom tohoto prístupu teda nie je umožnenie súčasného prístupu 3 klientov na 1 súborový systém, ale poskytnutie 3 rôznych častí disku jedného zariadenia 3 rôznym klientom.
+
+\subsection{DRBD}
+Pojem DRBD sa často vyskytuje práve v spojení s vysokou dostupnosťou a súborovými systémami. Nie je však ďalším súborovým systémom ani priamo nezabezpečuje vysokú dostupnosť aplikácií. Predstavuje riešenie úložiska dát zrkadliace obsah blokových zariadení (hard-diskov, partícií, logických jednotiek) medzi dvoma serverami. Funkciu DRBD jednoducho vysvetlíme na príklade dvojitého papiera, s ktorým sa bežne stretávame na poštových poukážkach. Všetko čo napíšeme na vrchný papier sa automaticky objaví aj na tom spodnom. Rovnako funguje aj DRBD, len namiesto bieleho papiera používa diskové partície a čierny kopírovací papier nahrádza sieťovú kartu. Jeho presné začlenenie do systému ukazuje obrázok \ref{image_drbd}. Na fyzickom disku oboch serverov vytvoríme partície, tie podsunieme DRBD, ktoré z oboch vytvorí jedno spoločné zariadenie. Na neho sa potom nainštaluje súborový systém. Ďalšia práca s ním prebiaha rovnako ako s lokálnym súborovým systémom. Vo výsledku ho je môžné prirovnať k RAID-1, jediným rozdielom je, že zrkadlenie neprebieha v rámci jedného serveru ale je naňho použitá dedikovaná sieť.
+
+\myFigure{drbd}{Spôsob prenosu dát systémom DRBD \cite{web:drbd.org}} {Prenos dát v DRBD}
+
+Prakticky je systém využiteľný najmä v prípade keď potrebujeme zabezpečiť dostupnosť dát pri hardwarovej chybe servru, ktorá presahuje výpadok disku (na ktorý by RAID-1 stačil) - napríklad vyhorenie zdroja alebo poškodenie základnej dosky. Zrkadlené servery vďaka využitiu siete nemusia byť ani v jednej miestnosti, takže systém je odolný aj voči katastrofám ako napríklad požiar.
+
+Keďže zmena stavu nódov a pripájanie systému nie sú vykonávané automaticky a ich pripájanie k systému ručne je kontraproduktívne (reačná doba je obvykle v rozpätí hodín) je nutné využiť nástroj, ktorý to zabezpečí. Tým je práve CRM zmienené v sekcii \ref{lbl:sec:crm}. Ten umožňí nielen pripojenie súborového systému ale automatizuje spúštanie a vypínanie služieb, presun zdieľanej IP adresy na primárny nód a veľa iného na základe vopred definovaných pravidiel.
+
+Drbd je v dnešnej dobe obľúbeným nástrojom administrátorov, čo dokazuje aj fakt, že počet jeho inštalácií každý mesiac presiahne 10 000 \cite{web:drbd.org}. Konfiugrácia umožňuje použitie práve dvoch nódov, ktoré sú definované ako primárny-primárny alebo primárny-sekundárny. Aktuálnou verziu je 8.4.1.
+
+DRBD môže fungovať v dvoch módoch zápisu na disk (definovaných ako "`protokol"'), ktoré sa líšia v rýchlosti zápisu dát a miere bezpečnosti ktorú požadujeme:
+
+\begin{description}
+	\item[Synchrónne] Pri synchrónnom prenose je aplikácii oznámené úspešné uloženie až vo chvíli keď sú dáta uložené na primárnom servri a skopírované cez sieť na sekundárny disk
+	\item[Asynchrónne] Pri asynchrónnom prenose je úspešné uloženie potvrdené už vo chvíli zápisu na primárny disk. Asynchrónne prenosy sú síce rýchlejšie ale menej bezpečné. Využívané sú keď je prenosová rýchlosť siete nedostačujúca.
+\end{description}
+
+\subsubsection{Primárny/Sekundárny}
+Táto konfigurácia funguje na princípe dvoch zariadení (nódov), pričom jeden (primárny) je pripojený k systému a s jeho obsahom sa dá normálne pracovať zatiaľ čo druhý (sekundárny) je odpojený, nedá sa pripojiť a je využívaný len na kopírovanie dát z primárneho disku. V prípade výpadku sa po vypršaní timeoutu nastaví neprístupný nód do stavu Unknown, druhý je povýšený na primárny (pomocou CRM) a je pripojený súborový systém. Takto zabezpečíme že aj na záložnom serveri budú vždy najnovšie dáta.
+
+\subsubsection{Primárny/Primárny}
+Od verzie 8.0 je možné nakonfigurovať oba nódy ako primárne. To je využiteľné hlavne pre systémy, na ktorých využívame rozloženie záťaže (load-balancing). Takáto konfigurácia umožňuje súčasný prístup k dátam na oboch nódoch, čo môže zvýšiť rýchlosť. Keďže sú oba nódy využívané zároveň, nie je možné použiť bežný súborový systém ako napríklad ext3. To by po chvíli viedlo k poškodeniu dát. Pri tomto nastavení musíme použiť súborové systémy ako GFS2 alebo OCFS2, ktoré používajú ochranný mechanizmus na zabránenie poškodenia dát súčasnou zmenou z viacerých miest.
+
+\subsection{iSCSI}
+Small Computer Systems Interface je populárna sada protokolov pre komunikáciu predovšetkým úložných zariadení. Protokol definuje dva rôzne typy zariadení, initiators a targets. Initiators je názov pre klientov. Tí nadväzujú komunikáciu a zasielajú príkazy (požiadavky). Targets sú servery (úložné zariadenia), ktoré na požiadavky odpovedajú a vykonávajú zadané príkazy.
+
+iSCSI využíva SCSI protokol pre prácu s blokovými zariadeniami, avšak na komunikáciu využíva TCP/IP siete. Tieto siete pritom nemusia byť dedikované, môže ich zdieľať inými sieťovými aplikáciami.
+
+Všetky zariadenia v iSCSI sieťach (klienti aj servery) majú pridelené adresy. Príklad zvyčajného formátu je iscsi.com.acme.sn.8675309. Tieto adresy musia byť unikátne. iSCSI poskytuje tiež metódy pre autentizáciu a vyhľadávanie.
+
+iSCSI je protokol poskytujúci podobnú funkcionalitu ako Fibre Channel bez nutnosti budovania dodatočnej infraštruktúry. Pri využívaní aplikácií vyžadujúcich vysoký výkon úložných zariadení však môže byť technológia Fibre Channel vhodnejšia \cite{pdf:iscsi-fc}.
+
+\subsection{Fibre Channel}
+Fibre Channel (FC) bol vyvinutý ako odpoveď na stále sa zvyšujúcu potrebu vysoko rýchlostného riešenia, ktoré by umožnilo prenášať veľký objem dát. Pri stále sa zvyšujúcej rýchlosti procesorov a periférnych zariadení začali Ethernet a SCSI obmedzovať celkový výkon systémov.
+
+Fibre Channel je sadou štandardov, ktoré definujú technológiu prenosu dát. Jeho prenosová rýchlosť sa každou generáciou znásobuje (1Gb/s, 2Gb/s, 4Gb/s a dnes 8Gb/s) a je možné ho použiť na vzdialenosti do 10 kilometrov. Je podobný protokolom Ethernet alebo SCSI, prináša však vyššiu rýchlosť a vzdialenosť.
+
+Fibre Channel definuje len metódu transportu dát, nezameriava sa na ich typ alebo obsah. Tým sa stáva veľmi flexibilným, keďže môže prenášať dáta medzi dvoma počítačmi, počítačom a periférnymi zariadeniami (ako diskové polia a tlačiarne) alebo dvoma periférnymi zariadeniami (pri zálohovaní na páskové mechaniky).
+
+Pomenovanie Fibre Channel môže byť zavádzajúce, pretože technológia nie je limitovaná využitím optických vkáken, môžu byť použité aj medené vodiče \cite{pdf:fc}.
+
+Použitie Fibre Channel je však nákladnejšie ako iSCSI. Vyžaduje inštaláciu HBA karty pre každý server, využitie Fibre Channel switchu a samostatnú kabeláž. Tiež je zložitejšie spravovať dve siete, ethernetovú LAN pre užívateľov a Fibre Channel SAN pre úložisko.
+
+%-----------------------------------------------------------------------------------------------------------------------------------------
+\section{Súborové systémy}
+Bežné súborové systémy, ktoré používame na klientských staniciach, ako NTFS vo windowse alebo ext3, ReiserFS či XFS v linuxe neboli vyvinuté s ohľadom na riešenie vysokej dostupnosti dát. Kapacity pevných diskov sa v poslednej dobe značne zvyšujú, avšak ich rýchlosť rastie oveľa nižším tempom. Preto bolo potrebné vyvinúť technológie umožňujúce rozloženie záťaže pri prístupe k dátam a zvýšenie ich bezpečnosti. 
+
+Svojou funkcionalitou spomedzi nich vyniká súborový systém ZFS vyvinutý spoločnosťou SUN. Ten umožňuje vymoženosti ako vytváranie snapshotov, konfiguráciu RAIDu alebo manažment úložiska. ZFS využíva blokové zariadenie tak, že ho priradí do "`poolu"', kde sa týchto zariadení môže nachádzať viacero. Z ich kombinovanej kapacity potom vytvára dátové úložisko dostupné užívateľom.
+
+Súborové systémy sa dajú rozdeliť do niekoľkých kategórií.
+
+\subsection{Sieťové súborové systémy}
+Sieťový súborový systém (NFS) sa vyznačuje spôsobom prístupu k súborom prostredníctvom počítačovej siete. NFS umožňuje pracovať so súbormi rovnako ako keby boli uložené lokálne. Súbory sa však fyzicky nachádzajú na inom počítači a pristupujeme k nim pomocou rôznych služieb (SMB). Na vzdialenom počítači sa zvyčajne používa bežný súborový systém. Tento spôsob umožnuje administrátorom usporiadať dáta do centralizovaných serverov na sieti.
+
+Špeciálnym prípadom NFS sú distribuované súborové systémy, ktoré popíšem v ďalšej sekcii.
+
+\subsection{Súborové systémy so zdieľaným diskom}
+Súborové systémy so zdieľaným diskom umožňujú počítačom v klastri súčasné využívanie blokového zariadenia, ktoré je zdieľané napríklad pomocou FC, iSCSI alebo DRBD. Čítanie a zápis prebieha podobne ako na lokálnom súborovom systéme, avšak je využívaný zamykací modul, ktorý tieto operácie koordinuje a udržuje tak konzistenciu systému. Zmeny vykonané na jednom stroji sa tak okamžite prejavia aj na ostatných. To umožňuje výpadok niektorého z nódov bez ovplyvnenia dostupnosti dát ostatných.
+
+Zdieľané súborové systémy môžu byť symetrické, kde sú metadáta uložená priamo na nódoch klastra alebo asymetrické kde sa ako úložisko používa centralizovaný server.
+
+Zo súborových systémov so zdieľaným diskom som vybral GFS2 a OCFS2, ktoré sú voľne dostupné a aktuálne vyvíjané a použijem ich pri testovaní v praktickej časti.
+
+\subsubsection{Global File System 2}
+Vývoj GFS začal na univerzite v Minnesote. Pri projekte na simuláciu morských prúdov vznikli dve požiadavky - potreba ukladať veľké množstvo dát a umožniť súčasný prístup k nim z viacerých serverov zároveň. GFS bol následne zakúpený firmou Sistina, ktorú spolu s ním prevzal v roku 2003 Red Hat.
+
+GFS2 je 64-bitový symetrický súborový systém, vhodný pre aplikácie vyžadujúce SAN v ktorej každý server v klastri má rovnaký prístup k úložisku. Všetky nódy využívajú identický software a môžu so súborovým systémom vykonávať rovnaké operácie.
+
+Systém je žurnálovací, každý nód si udržiava vlastnú kópiu. Na obmedzenie prístupu a uchovanie integrity systému využíva manažéra uzamykania DLM. GFS2 je možné použiť aj na samostatnom serveri \cite{pdf:gfs2}.
+
+\subsubsection{Oracle Cluster File System 2}
+OCFS je už od svojho počiatku v roku 2003 vyvíjaný firmou Oracle. Je dostupný pod GNU GPL2 licenciou. Cieľom tohoto projektu bolo poskytnúť podobný výkon ako majú lokálne súborové systémy, a začleniť ho do hlavnej vývojovej vetvy linuxového jadra, čo sa podarilo v roku 2006. V súčasnosti umožňuje vytvárať klastre s maximálne 32 nódmi.
+
+Súborový systém je možné pripojiť rovnako ako lokálny. Nelimituje počet súborov a umožňuje vytvoriť súborový systém s veľkosťou až 4 PB oproti GFS2 s 25 TB. Dôraz je kladený tiež na jeho jednoduchú správu.
+
+Aktuálne je využívaný firmou Oracle napríklad pri virtualizácii (Oracle VM) a databázových klastroch (Oracle RAC) \cite{pdf:ocfs2}.
+
+\subsection{Distribuované súborové systémy}
+Účelom distribuovaných súborových systémov (DFS) je umožniť užívateľom nachádzajúcim sa v rôznych lokalitách zdieľať dáta a úložný priestor použitím spoločného súborového systému. DFS je implementovaný ako súčasť operačného systému každého pripojeného počítača. Klientské stanice nemajú priamy prístup k blokovému zariadeniu, k súborom pristupujú pomocou siete. Dáta môžu byť rozložené na viacerých serveroch, čo umožňuje paralelný prístup. Tým je dosahovaná vysoká rýchlosť ich čítania a zápisu \cite{pdf:dfs}.
+
+Ako je už pri softwarových produktoch zvykom, distribuovaných súborových systémov existuje veľké množstvo. Vybral som z nich dva, ktoré sú voľne dostupné a odolné voči výpadku časti klastra.
+
+\subsubsection{GlusterFS}
+GlusterFS je súborový systém, ktorý agreguje úložisko viacerých počítačov do jedného celku. Podporuje lokálne úložiská alebo pripojené pomocou iSCSI, Fibre Channel a Infiniband.
+
+Na rozdiel od iných distribuovaných súborových systémov nevyužíva metadáta súborov. Namiesto nich lokalizuje dáta v klastri pomocou hashovacieho algoritmu. To je považované za jednu z veľkých výhod vedúcich k zníženiu rizika straty dát alebo ich poškodeniu.
+
+GlusterFS je súčasťou platformy vyvinutej firmou Gluster. Tá poskytuje GUI nástroje na jeho inštaláciu a administráciu. Gluster dokáže dáta zrkadliť a môže byť nakonfigurovaný ako kompletne redundantné riešenie. Gluster podporuje rôzne linuxové operačné systémy. Využitie nachádza napríklad v cloude alebo pri archivácii. GlusterFS je open-source, dostupný pod GNU AGPL3 licenciou \cite{pdf:gluster}.
+
+\subsubsection{Lustre}
+Vývoj Lustre začal z iniciatívy vlády USA, ktorá ho aj financovala. V súčasnosti ho zastrešuje Oracle, ktorý ho prebral spolu s firmou Sun Microsystems. Lustre je open-source, distribuovaný pod GNU GPL licenciou.
+
+Pri jeho návrhu bolo cieľom vytvoriť škálovateľný a vysoko výkonný súborový systém pre superpočítače. Lustre tento cieľ dosiahol, dnes je využívaný na 15 z 30 najvýkonnejších počítačoch sveta. Je populárny predovšetkým vo výskume, finančnom a mediálnom sektore \cite{pdf:lustre}.
+
+Lustre je objektovo založený systém pozostávajúci z troch základných komponentov - metadátového serveru (MDS), serverov na úschovu objektov (OSS) a klientov. Medzi jeho hlavné prednosti patria \cite{web:lustre}:
+\begin{description}
+	\item[Škálovateľnosť] Rozšírenie súborového systému je jednoduché - úložisko môže byť pridávané podľa potreby prostredníctvom LAN alebo WAN
+	\item[Rýchlosť] Vysoká rýchlosť je dosahovaná paralelným prístupom medzi klientami a servermi. Súčet rýchlostí prístupu k dátam môže dosahovať až stovky GB/s
+	\item[Dostupnosť] Redundantné servery a failover úložísk zabezpečujú vysokú dostupnosť
+\end{description}
+
+%-----------------------------------------------------------------------------------------------------------------------------------------
+\section{GUI}
+\label{lbl:sec:gui}
+GUI nástroje uľahčujú konfiguráciu klastra, avšak nie sú natoľko intuitívne, aby bolo možné klaster nakonfigurovať bez základného prehľadu o tom ako funguje. Nasledujúce nástroje slúžia na ovládanie \ac{CRM} bez použitia príkazového riadku. Dva z nich, DRBD-MC a Pacemaker GUI som pri konfigurácii klastra vyskúšal.
+
+\subsection{DRBD Management Console}
+Tento nástroj je vyvinutý v Jave a jeho možnosti sú najširšie. Jeho funkcionalitu môžme rozdeliť do 3 oblastí:
+
+\begin{itemize}
+	\item Inštalácia klastra. Dokáže automaticky nainštalovať Heartbeat, Corosync alebo Pacemaker
+	\item Správa DRBD a LVM. Umožňuje vytváranie zariadení, ich následnú konfiguráciu a správu klastra
+	\item Správa CRM. Umožňuje konfiguráciu globálnych nastavení, vytváranie pravidiel pre konkrétne služby, ich migráciu a veľa ďalšieho
+\end{itemize}
+
+\myFigure{gui-drbd-full}{Grafické rozhranie DRBD Management Console} {Grafické rozhranie DRBD MC}
+
+Ku klastru sa pripája pomocou protokolu SSH, cez ktorý posiela konfiguračné príkazy. Rozhranie pôsobí na prvý pohľad profesionálne, ale s neúplnými znalosťami klastrových systémoch som sa v ňom miestami trochu strácal. Osobne by som ocenil rozdelenie prostredia do módov pre začiatočnikov a pokročilých, ako to je v Pacemaker GUI.
+
+\subsection{Pacemaker GUI}
+Tento nástroj je známy pod viacerými menami, napríklad heartbeat gui alebo pacemaker python gui. Na serveri je spustený démon, na ktorý sa klient pripája. Nástroj je určený výhradne pre ovládanie Pacemakeru. Gui poskytuje 3 módy pracovného prostredia jednoduché, expertné a hackerské, v závislosti ako detailne chceme klaster konfigurovať. Problémom môže byť, že pre jeho spustenie z windowsov musíme mať nastavený X forwarding. Jeho autorom je Andrew Beekhof.
+
+\subsection{HAWK}
+%http://www.clusterlabs.org/wiki/Hawk
+Hawk vznikol ako náhrada v prípadoch kedy z nejakého dôvodu nechceme alebo nemôžme využiť niektoré z predchádzajúcich GUI. Je prístupný pomocou webového rozhrania, čo môže byť výhodou napríklad v prípade prísnej firemnej politiky ohľadom SSH prístupov. Jeho funkcionalita nepokrýva všetky oblasti a aj samotná stránka programu hovorí, že sa ľahko môžme dostať do situácie kedy budeme musieť použiť príkazový riadok.
+
+\subsection{Conga}
+%http://linux.web.cern.ch/linux/scientific6/docs/rhel/High_Availability_Add-On_Overview/#s1-clumgmttools-overview-CSO
+Rozhranie Conga je distribuované s High Availability Add-On od Red Hatu. Pozostáva z démona Ricci, bežiaceho na servri, ktorý sa stará o distribúciu klastrovej konfigurácie a aplikácie Luci, ktorá poskytuje užívateľské rozhranie.
+
+\emptydoublepage

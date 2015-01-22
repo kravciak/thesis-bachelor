@@ -1,0 +1,219 @@
+\chapter{Realizácia}
+Pôvodný návrh tejto práce počítal s realizáciou a testovaním celého riešenia na reálnych serveroch. Tie sa mi ale v čase písania práce nepodarilo zabezpečiť, takže praktická časť prebehla na virtuálnych serveroch. Tým sú podstatne ovplyvnené niektoré z testov, avšak verím, že aj pomocou tohoto dokumentu bude možné riešenie veľmi jednoducho realizovať a otestovať aj v reálnom prostredí.
+
+Virtualizačné riešenie, ktoré som použil je trial verzia VMware Workstation. Vybral som ho z dôvodu podpory viacerých snapshotov a dobrou integráciou s Windows 7, ako aj preto že som ho v minulosti používal a mám s ním dobré skúsenosti.
+
+V ňom som vytvoril 2 virtuálne stroje Adama a Evu. Ich hardwarová konfigurácia je rovnaká, avšak v reálnom nasadení to nie je vyžadované. Jednotlivé komponenty nájdeme v tabuľke \ref{table:vmware-parametre}.
+
+\myTable{
+\begin{tabular}{ | l | l | }
+	\hline
+	Komponent & Parametre \\
+	\hline
+  Operačná pamäť	& 1 GB  \\ \hline
+  Pevný disk			& 20 GB SCSI  \\ \hline
+  Procesor				& 1 jednojadrový procesor \\ \hline
+	Sieťová karta 1	& NAT pripojený na internet \\ \hline
+	Sieťová karta 2 & Host-only rozhranie \\ \hline
+	CD/DVD					& Pripojený iso obraz OS \\
+	\hline
+\end{tabular}
+}{Parametre virtuálnych strojov}{table:vmware-parametre}
+
+Ako je už v úvode spomenuté, pokúšam sa nakonfigurovať riešenie pre malé firmy alebo domáce použitie, takže je nevyhnutné brať na zreteľ cenu. Preto som vyberal technológie, ktoré sú dostupné zdarma. Hardwarové nároky použitého systému sú tiež minimálne. Schému celého riešenia, ktoré nakonfigurujem vidíme na obrázku \ref{image_klaster-schema}. 
+
+\myFigure{klaster-schema}{Schéma finálneho riešenia klastra} {Schéma klastra}
+
+\section{Operačný systém} % ====================  ====================
+Prvé kolo rozhodovania bolo relatívne ľahké. Windows alebo Linux? Windows je síce rozšíreným operačným systémom, ale je licencovaný. Taktiež riešenia dostupné zadarmo sú väčšinou produkované komunitou, ktorá je sústredenejšia okolo Linuxu.
+
+Druhým kolom bolo vybrať tú správnu distribúciu Linuxu. Existuje ich ale veľké množstvo, tak ktorá je tá najlepšia? Každá distribúcia má svoje pre a proti, ja som si vybral serverovú edíciu Ubuntu z nasledujúcich dôvodov:
+
+\begin{enumerate}
+	\item Ubuntu poznám. To síce nijako neopodstatňuje jeho použitie z profesionálneho hľadiska, avšak verím, že väčšina administrátorov uvažuje podobne. Prečo inštalovať neznáme riešenie na neznámy OS? Tiež v prípade, že firma už pre servery využíva konkrétny OS, nie je zvykom stažovať administrátorom prácu udržiavaním rozličných OS.
+	\item Ubuntu server sa vyvíja veľmi rýchlo, nové verzie sú vydávané každých 6 mesiacov. Jedným z cieľov práce je otestovať reálne riešenie, tak prečo nie práve na menej konzervatívnom systéme
+	\item Ubuntu je postavené na Debiane, ktorý obsahuje obrovské množstvo predkompilovaných balíčkov. Ubuntu túto základňu ešte viac rozširuje a novšie aplikácie sú k dispozícii oveľa skôr ako v prípade niektorých iných distribúcií
+	\item Ubuntu poskytuje mimo komunitných fór aj platenú podporu. Rovnako platenú podporu poskytuje napríklad Red Hat (podpora je na fórach hodnotená dosť slabo), avšak možno práve fakt, že Ubuntu je menej komerčný bude znamenať že táto podpora bude kvalitnejšia.
+\end{enumerate}
+
+Mnou použité riešenie ale obdobne funguje aj na ostatných distribúciách. Najväčšie rozdiely budú pozorovateľné pravdepodobne pri samotnej inštalácii balíčkov a následnom hľadaní konfiguračných súborov. S výnimkou vlastného rozdelenia disku som pri inštalácii OS použil prednastavé hodnoty.
+
+Vybral som si aktuálnu verziu Ubuntu 12.04. Všetok software som inštaloval pomocou správcu balíčkov apt zo štandardných repozitárov.
+
+\section{Dostupnosť dát} % ====================  ====================
+
+Počínajúc touto kapitolou sa začnem prakticky venovať vybraným technológiám z predchádzajúceho textu. Použitie RAIDu pre diskové pole je, ako som v sekcii \ref{lbl:sec:raid} popísal, prvým krokom k dosiahnutiu vyššieho zabezpečenia dát. V prípade výpadku tak nie je nutné odstaviť celý server, stačí vymeniť chybný disk. Vo virtuálnych servroch som ale túto vrstvu vynechal, pretože sa chcem zaoberať predovšetkým vysokou dostupnosťou s ohľadom na prevenciu výpadkov akéhokoľvek komponentu, nie len pevného disku.
+
+Použité 20 GB disky som rozdelil čo najjednoduchšie. Časť z nich som nechal nevyužitú kvôli možnostiam ďalšieho testovania. Jeho presné rozdelenie ukazuje tabuľka \ref{table:rozdelenie-disku}. Disky na oboch serveroch sú rozdelené rovnako. Pri reálnom nasadení nie je nutné rovnaké rozdelenie disku, avšak partície vyhradené pre DRBD musia mať rovnakú veľkosť.
+
+\myTable{
+\begin{tabular}{ | l | l | c | c | c | c | }
+	\hline
+	Partícia & Bod pripojenia 			& FS 	 & Veľkosť & Typ & Využitie \\ \hline
+  sda1 		 & \textbackslash root	& ext4 & 7 GB 	 & primárna & OS \\ \hline
+  sda5 		 & swap					 				& swap & 1 GB 	 & logická & swap \\ \hline
+  sda6 		 & nevyužitá			 			&  -	 & 5 GB 	 & logická & testy FS s DRBD \\ \hline
+	sda7 		 & nevyužitá						&  -   & 5 GB 	 & logická & testy FS bez DRBD \\ \hline
+	-		 		 & voľné miesto	 				&  -   & 2 GB 	 & - & rezerva \\
+	\hline
+\end{tabular}
+}{Tabuľka rozdelenia disku}{table:rozdelenie-disku}
+
+Partície sda6 som použil ako podklad pre DRBD zariadenie. Jeho konfiguráciu popíšem v nasledujúcej kapitole.
+
+\subsection{DRBD}
+Inštalácia nástrojov potrebných pre jeho správu prebehla bez problémov. Pri prvom použití bolo treba načítať modul jadra s názvom drbd. V niektorých distribúciách je potrebné tento modul nainštalovať, v mojom prípade ho už jadro obsahuje. Konfigurácia sa delí na 2 časti, globálnu a konfiguráciu samotnej DRBD partície.
+
+\begin{description}
+	\item[Globálna] časť umožňuje definovať správanie DRBD aplikácie. Definujeme tu napríklad požadované reakcie v prípade výpadku niektorého z diskov, timeouty, rýchlostné limity alebo protokol (synchrónny, asynchrónny) ktorý chceme použiť.
+	\item[Partície] definujeme tak, že špecifikujeme podkladové partície, ktoré má DRBD použiť, adresy servrov, na ktorých sa nachádzajú a názov zariadenia, ktoré má vytvoriť. Takýchto partícií môžeme definovať viacero.
+\end{description}
+
+Konfiguračné súbory sú na oboch servroch rovnaké. DRBD nezrkadlí konkrétne súbory a priečinky, pracuje len na úrovni blokového zariadenia ako je popísané v kapitole \ref{lbl:sec:zdielane-blokove-zariadenie}. Aby som mohol toto zariadenie využiť, musel som na ňom vytvoriť súborový systém. Práve jeho výberu sa budem venovať v ďalšej kapitole. Pre zrkadlenie dát som použil samostatnú sieťovú kartu, pretože aj keď sú výsledky testov skreslené v dôsledku virtualizácie, v reálnom nasadení je to odporúčané. Konfiguračný súbor je zobrazený vo výpise \ref{lst:drbd}.
+
+\begin{lstlisting}[label=lst:drbd,caption=Konfiguračný súbor DRBD zariadenia]
+	resource r0 {
+		device    /dev/drbd0;
+		disk      /dev/sda6;
+		meta-disk internal;
+		
+		on adam {
+			address   10.1.1.11:7789;
+		}
+		on eva {
+			address   10.1.1.12:7789;
+		}
+	}
+\end{lstlisting}
+
+Prednastavený limit maximálnej rýchlosti pre synchronizáciu je vhodné upraviť pomocou konfiguračnej položky "`rate"'. Obmedzenie rýchlosti je využiteľné najmä v prípade, kedy existuje riziko zahltenia sieťovej karty pri inicializácii. Ďalšiu replikáciu dát tento limit neovplyvňuje.
+
+\subsection{Súborový systém}
+%http://pommi.nethuis.nl/bonnie-to-google-chart/
+%http://unix.stackexchange.com/questions/165/what-are-the-disadvantages-of-ext4-reiserfs-jfs-and-xfs
+%http://www.abclinuxu.cz/zpravicky/benchmark-souboroveho-systemu-s-bonnieplusplus
+%popis vystupu - http://www.textuality.com/bonnie/advice.html
+
+Súborových systémov je veľa, preto som sa zameral na tie najpoužívanejšie. Medzi testované som zahrnul ext3, ext4, reiserfs, zfs, jfs a xfs. Zo systémov so zdieľaným diskom som chcel v testoch zahrnúť OCFS2 a GFS2. GFS2 sa mi však v mojej konfigurácii nepodarilo spustiť kôli problémom v komunikácii klastra, spôsobenými pravdepodobne chybou medzi vrstvami Corosync a CMAN. Porovnanie ich výkonnosti je možné nájsť napríklad v dokumente \cite{pdf:filesystem-comparison}.
+
+Na testovanie súborových systémov som si vybral voľne dostupný nástroj bonnie++ verzie 1.96 a na prevod do grafickej podoby php skript bonnie2gchart. Test pozostával z dvoch častí, testu rýchlosti zápisu a čítania dát a testu počtu operácií s metadátami súborov, ktoré sa vykonajú za jednu sekundu. Tieto testy majú rôzne praktické využitie:
+
+\begin{description}
+	\item[I/O Dáta] Tento test je dôležitý - ak chceme súborový systém použiť na prácu s menším množstvom veľkých súborov. Vhodné využitie je napríklad pre ftp server. Test prepisovania je dôležitý v prípade, že nami využívané aplikácie často upravujú už existujúce dáta.
+	\item[Metadáta] Rýchlosť práce s metadátami je dôležitá v prípade práce s menšími súbormi. Pri rozbaľovaní archívu s veľkosťou 10 MB, ktorý obsahuje stovky súborov bude rýchlosť práce s metadátami zaujímavejšia ako rýchlosť zápisu na disk. Test je vhodný napríklad pre mailové servery, tmp partíciu alebo squid proxy.
+\end{description}
+
+Do testovania som pre zaujímavosť zahrnul aj ntfs partíciu, ktorá je štandardom na windowsoch. Testy práce s dátami dopadli vyrovnane ako je vidno na obrázku \ref{image_testing-fs-io}. Pri testovaní som sa snažil nezaťažovať hostiteľský OS nepotrebnými aplikáciami, avšak pri opätovnom spustení sa výsledky toho istého testu mierne líšili. Odchýlky však boli malé, na grafe sú znázornené výsledky jedného testu.
+
+\myFigure{testing-fs-io}{Testy rýchlosti s použitím DRBD} {Testy rýchlosti s DRBD}
+
+Pri výbere súborového systému zameraného na prácu s malými súbormi sa ako najvhodnejší kandidáti ukázali ext3, ext4 a reiserfs. Keďže ext4 je nasledovníkom ext3 a budúcnosť reiserfs bola istú dobu neistá, mojou voľbou by bol ext4. Pri vytváraní súborových systémov ma mierne zarazil fakt, že len niektoré z nich (xfs a jfs) vyžadujú potvrdenie pri prepísaní partície s už existujúcim súborovým systémom. Pritom malou chybou v čísle partície (sda6 vs sda7) pri jeho vytváraní môže administrátor zmazať všetky údaje uložené na danej partícii. NTFS nástroje partíciu dokonca bez varovania prepíšu nulami.
+
+\myFigure{testing-fs-metadata}{Testy rýchlosti práce s metadátami} {Testy rýchlosti metadát s DRBD}
+
+Pre porovnanie rýchlosti som tie isté testy zopakoval bez použitia DRBD zariadenia. Zápis dát prebehol dva až tri krát rýchlejšie, rýchlosť čítania dát je porovnateľná. Presné výsledky sú znázornené na obrázku \ref{image_testing-fs-io-nodrbd}. Musím ale pripomenúť, že testovacím prostredím je VMware, ktoré využíva jediný fyzický disk hostiteľského systému. Toto obmedzenie pravdaže vyplýva z hardwarovej konfigurácie môjho počítača. Preto napríklad zápis dát pri replikácii pomocou DRBD musel prebehnúť 2 krát na tom istom disku.
+
+\myFigure{testing-fs-io-nodrbd}{Testy rýchlosti bez použitia DRBD zariadenia}{Testy rýchlosti bez DRBD}
+
+Výberom súborového systému a jeho inštaláciou na DRBD partíciu som dosiahol, že v prípade výpadku jedného zo strojov sú rovnaké dáta prístupné na druhom bez nutnosti obnovy zo zálohy alebo dodatočnej konfigurácie. Vytvoril som RAID-1 nezávislý na chybe v rozsahu servera. Vysoko dostupné dáta sú však bez aplikácií, ktoré ich sprístupnia užívateľom nepoužiteľné, preto v nasledujúcej časti predstavím konfiguráciu vysoko dostupného riešenia pre aplikácie.
+
+\section{Dostupnosť aplikácií} % ====================  ====================
+Pri realizácii tejto časti som sa rozhodoval, ktoré komponenty použiť. RGManager alebo Pacemaker? Corosync alebo Heartbeat? Zvolil som si cestu čo najjednoduchšieho riešenia s prihliadnutím na vyhliadky jednotlivých projektov. Corosync zabezpečuje časť funkcionality CMANu, potrebného pre RGManager. Pacemaker má časom ale RGManager nahradiť. Vybral som teda riešnie zostavené z čo najmenšieho počtu komponentov, ktoré vydržia čo najdlhšie. Corosync a Pacemaker.
+
+\subsection{Kominukačná vrstva}
+Pri inštalácii Corosyncu je potrebné vygenerovať zdieľaný kľúč, ktorý slúži na autentizáciu jednotlivých serverov a aby vedeli že do daného klastra patria. Jediným problémom, na ktorý som natrafil bola prednastavená hodnota "`start=no"' v jednom z konfiguračných súborov. Corosync kvôli nej pokusy o štart ignoroval bez výpisu akýchkoľvek dodatočných informácií.
+
+\subsection{Manažér procesov}
+Ako manažéra procesov som použil Pacemaker. Konfiguroval som ho pomocou nástroja príkazového riadku crm, ktorý poskytuje rozhranie k samotnému xml súboru, v ktorom sú nastavenia uložené. Rovnaký výsledok sa dá dosiahnúť použitím testovaných GUI zmienených v kapitole \ref{lbl:sec:gui}. Pre názornú ukážku som použil drbd v móde primárny/sekundárny a na ňom vytvoril súborový systém ext4. Na aktívnom nóde bude prístupná IP adresa, ktorú môže využívať ľubovoľná služba.
+
+Pre samotnú konfiguráciu bolo nutné nastaviť niekoľko pravidiel, ktorých reálny zápis možno vidieť vo výpise \ref{lst:crm}. Konfigurácia sa skladala z pravidiel definujúcich:
+\begin{description}
+	\item[Primitívy] ktoré definujú jednotlivé služby. V tejto konfigurácii sú použité 3 primitívy pre DRBD, súborový systém a IP adresu
+	\item[Kolokácie] definujú nutnosť spustenia služieb spoločne. V mojom prípade sú 2 a definujú že IP adresa môže byť spustená len na nóde s pripojeným súborovým systémom a ten bude pripojený vždy na primárnom nóde
+	\item[Poradie] hovorí ako z názvu vyplýva o poradí spustenia služieb. Súborový systém nemôže byť pripojený skôr ako DRBD zariadenie
+	\item[Priľnavosť] definuje ako veľmi chceme, aby služba ostala bežať na nóde, na ktorom je. V prípade že by som túto hodnotu nenastavil, služby by samovoľne migrovali podľa uváženia Pacemakeru
+	\item[Vlastnosti] definujú všeobecné správanie klastra. Ja som ich použil na zrušenia vynucovania vlastností Stonith a Quorum, ktoré pre potreby ukážky nie sú nevyhnutné, avšak v produkčnom nasadení sa na ne nesmie zabudnúť
+\end{description}
+
+\begin{lstlisting}[label=lst:crm,caption=Čiastočný výpis konfigurácie crm]
+root@eva:~# crm configure show
+	Primitívy
+		primitive ClusterIP ocf:heartbeat:IPaddr2 \
+				params ip="192.168.45.101" cidr_netmask="24" \
+				op monitor interval="30s"
+		primitive DRBD ocf:linbit:drbd \
+				params drbd_resource="r0"
+		primitive fs_ext4 ocf:heartbeat:Filesystem \
+				params device="/dev/drbd0" directory="/mnt" fstype="ext4" \
+				meta target-role="Started"
+	Kolokácie
+		colocation drbd-with-ip inf: ClusterIP fs_ext4
+		colocation fs_on_drbd inf: fs_ext4 msDRBDclone:Master
+	Poradie
+		order fs_ext4-after-DRBD inf: msDRBDclone:promote fs_ext4:start
+	Vlastnosti
+		property stonith-enabled="false" no-quorum-policy="ignore"
+	Priľnavosť
+		rsc_defaults %*\$*)id="rsc-options" resource-stickiness="100"
+\end{lstlisting}
+
+Konfigurácia sa pri zmene automaticky propaguje na ostatné nódy v klastri. Funkcionalitu riešenia v praxi názorne predvediem v ďalšej kapitole.
+
+\section{Čo som vytvoril} % ====================  ====================
+Výsledok práce predvediem na názornom príklade. Na začiatku tohoto testu sú oba servery online a všetky služby sú spustené. Test spočíva vo vypnutí primárneho serveru takzvane "`natvrdo"' pomocou VMware. Pomocou systémových nástrojov (df, grep, crm\textunderscore mon, cat) predvediem zmenu stavu častí systému, ktoré Pacemaker ovláda - DRBD disku, pripojenia súborového systému a spustenia IP adresy. Z výpisu niektorých príkazov som odstránil nedôležité detaily pre lepšiu prehľadnosť.
+
+\subsection{Pred výpadkom}
+Nástroj crm\textunderscore mon slúži na zobrazenie stavu jednotlivých služieb, jeho výpis je na oboch serveroch identický. Služby sú teraz spustené na Adamovi. Parameter -1 slúži na jednorázový výpis stavu klastra. Vo výpise je vidieť zoznam nakonfigurovaných primitívov.
+\begin{lstlisting}[label=lst:done-crm-before]
+root@adam:~# crm_mon -1
+	Online: [ adam eva ]
+		ClusterIP      (ocf::heartbeat:IPaddr2):       Started adam
+		Master/Slave Set: msDRBDclone [DRBD]
+			Masters: [ adam ]
+			Slaves: [ eva ]
+		fs_ext4        (ocf::heartbeat:Filesystem):    Started adam
+\end{lstlisting}
+
+Nasledujúce príkazy dokazujú, že Adam je primárnym serverom a je na ňom pripojená DRBD partícia, zatiaľ čo sekundárny server je neaktívny.
+\begin{lstlisting}
+root@adam:~# df -h | grep mnt
+	/dev/drbd0      4.7G  198M  4.3G   5% /mnt
+root@adam:~# cat /proc/drbd | grep cs
+	0: cs:Connected ro:Primary/Secondary ds:UpToDate/UpToDate C r-----
+
+root@eva:~# df -h | grep mnt
+root@eva:~# cat /proc/drbd | grep cs
+	0: cs:Connected ro:Secondary/Primary ds:UpToDate/UpToDate C r-----
+\end{lstlisting}
+
+\subsection{Po výpadku}
+Po vypnutí primárneho serveru (Adam) sekundárny (Eva) detekuje jeho neprítomnosť a začne zapínať jednotlivé služby v nakonfigurovanom poradí. Po chvíli je z výpisu zrejmé, že sa všetky spustili na serveri Eva. Celý proces od detekcie po spustenie poslednej služby trval približne 5 sekúnd.
+\begin{lstlisting}[label=lst:done-crm-after]
+root@eva:~# crm_mon -1
+	Online: [ eva ]
+	OFFLINE: [ adam ]
+		ClusterIP      (ocf::heartbeat:IPaddr2):       Started eva
+		Master/Slave Set: msDRBDclone [DRBD]
+			Masters: [ eva ]
+			Stopped: [ DRBD:0 ]
+		fs_ext4        (ocf::heartbeat:Filesystem):    Started eva
+\end{lstlisting}
+
+Keďže Adam je už vypnutý a Eva s ním nemá spojenie, je v DRBD výpise označený ako unknown. Pacemaker nastavil DRBD na Eve do stavu primary a pripojil súborový systém.
+\begin{lstlisting}
+root@eva:~# cat /proc/drbd | grep cs
+	0: cs:WFConnection ro:Primary/Unknown ds:UpToDate/DUnknown C r-----
+root@eva:~# df -h | grep mnt
+/dev/drbd0      4.7G  198M  4.3G   5% /mnt
+\end{lstlisting}
+
+V prípade, že sa dáta na primárnom DRBD zariadení počas nedostupnosti druhého nódu zmenia, je po jeho opätovnom pripojení automaticky inicializovaná synchronizácia dát. Kopírujú sa len zmenená bloky, nie celé zariadenie ako pri inicializácii DRBD. Výpis znázorňuje priebeh synchronizácie.
+\begin{lstlisting}
+root@adam:/mnt# cat /proc/drbd
+	0: cs:SyncSource ro:Primary/Secondary ds:UpToDate/Inconsistent C r-----
+        [===========>........] sync'ed: 60.0% (8872/20188)K
+        finish: 0:00:00 speed: 11,316 (11,316) K/sec
+\end{lstlisting}
+
+
+\emptydoublepage

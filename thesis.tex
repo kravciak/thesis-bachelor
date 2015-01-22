@@ -1,0 +1,141 @@
+\documentclass[12pt, a4paper]{book}
+%\documentclass[12pt, a4paper, oneside]{book} %isis
+
+% ----- Nastavenie pisma -----
+\usepackage[slovak]{babel}
+\usepackage[IL2]{fontenc}
+\usepackage[utf8]{inputenc}
+
+% ----- Vkladanie obrazkov -----
+\usepackage{color, graphicx}
+\graphicspath{{./images/}}
+
+% ----- URL -----
+\usepackage{url}
+\usepackage[unicode]{hyperref} %odkazy vnutri dokumentu
+
+% ----- Zdrojové kódy -----
+\usepackage{listings}
+% info - http://en.wikibooks.org/wiki/LaTeX/Packages/Listings
+% comments - http://lenaherrmann.net/2010/05/20/javascript-syntax-highlighting-in-the-latex-listings-package
+\lstset{
+%  language=bash,                  % the language of the code
+  basicstyle=\footnotesize,       % the size of the fonts that are used for the code
+  numbers=none,                   % where to put the line-numbers
+  numberstyle=\tiny\color{gray},  % the style that is used for the line-numbers
+  stepnumber=2,                   % the step between two line-numbers. If it's 1, each line 
+                                  % will be numbered
+  numbersep=5pt,                  % how far the line-numbers are from the code
+  backgroundcolor=\color{white},  % choose the background color. You must add \usepackage{color}
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  frame=lines,                    % adds a frame around the code
+  rulecolor=\color{black},        % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. commens (green here))
+  tabsize=2,                      % sets default tabsize to 2 spaces
+  captionpos=b,                   % sets the caption-position to bottom
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=false,        % sets if automatic breaks should only happen at whitespace
+  title=\lstname,                 % show the filename of files included with \lstinputlisting;
+                                  % also try caption instead of title
+  keywordstyle=\color{blue},      % keyword style
+  stringstyle=\color{mauve},      % string literal style
+  escapeinside={\%*}{*)},         % if you want to add a comment within your code
+  morekeywords={*,...},            % if you want to add more keywords to the set
+	extendedchars=true,
+	literate={á}{{\'a}}1						%http://www.latexsearch.com/sandbox.do
+	{é}{{\'e}}1
+	{í}{{\'i}}1
+	{ó}{{\'o}}1
+	{ú}{{\'u}}1
+	{ľ}{{\v{l}}}1
+	{š}{{\v{s}}}1
+	{ť}{{\v{t}}}1
+%	comment=[l]{\#},
+%  commentstyle=\color{blue}
+}
+\renewcommand\lstlistingname{Výpis}
+	
+% ----- Zoznam skratiek -----
+\usepackage[nolist,footnote]{acronym}
+
+% ----- Okraje -----
+\usepackage[top=2.5cm,left=2cm,right=3cm,bottom=2.5cm]{geometry}
+%\usepackage[top=2.5cm,left=3cm,right=2cm,bottom=2.5cm]{geometry} %isis
+
+\linespread{1.5}
+
+\include{latex/i10preamble}
+
+\begin{document}
+
+% ----- Info o práci -----
+\title{Řešení vysoké dostupnosti pro síťové filesystémy v~Linuxu}
+\author{Martin Kra}
+\date{Máj 9, 2012}
+
+%--------------------------------------------------------------
+\frontmatter
+
+\maketitle \thispagestyle{empty} \emptydoublepage
+
+\chapter*{Prehlásenie}
+Prehlaem, že som bakalársku prácu spracoval samostatne, a že som uviedol všetky použité premene a literatúru, z ktorej som čerpal.
+
+\emptydoublepage
+
+\chapter*{Poďakovanie}
+Chcem poďakovať všetkým, ktorí ma podporovali a pomáhali mi, najmä svojim rodičom a starým rodičom za trpezlivosť a podporu pri štúdiu a Anke za motiváciu. V neposlednom rade ďakujem vedúcemu mojej práce, Ing. Lubošovi Pavlíčkovi za pomoc pri tvorbe práce a Tobimu za cenné rady, ktoré mi dal.
+
+\emptydoublepage
+
+%\chapter*{Abstract\markboth{Abstract}{Abstract}}
+%\addcontentsline{toc}{chapter}{\protect\numberline{}Abstract}
+%\label{abstract}
+
+\chapter*{Abstrakt}
+Cieľom tejto práce je oboznámenie čitateľov s problematikou vysokej dostupnosti a poskytnutie základného prehľadu o voľne dostupných technológiách, pomocou ktorých sa dá dosiahnuť. Zameriavam sa predovšetkým na riešenie problémov vyplývajúcich z hardwarových chýb systémov. Dokument bude možné použiť na získanie základných vedomostí potrebných pre konfiguráciu vlastného riešenia.
+
+V praktickej časti realizujem vysoko dostupné klastrové riešenie pomocou voľne dostupných technológií a zároveň porovnám výkonnosť rôznych súborových systémov na tejto platforme. Práca môže poslúžiť aj ako návod ako pomocou vlastnej konfigurácie otestovať a čo najvhodnejšie zvoliť súborový systém pre použitie v produkčnom prostredí.
+
+\section*{Kľúčové slová}
+vysoká dostupnosť, pacemaker, drbd, linux, súborový systém \emptydoublepage
+
+\chapter*{Abstract}
+The goal of this paper is to inform readers about high availability problematics and provide basic overview of free technologies you can use to achieve high availability. I focus mainly on solution of problems caused by hardware failures. Document can by used to gain basic knowledge needed for configuration of your own solution.
+
+In practical part I will try to realize high available cluster using free technologies and compare performance of different filesystems on this platform. Document will provide instructions for choosing and testing appropriate filesystem for specific configuration that can be used in production environment.
+
+\section*{Keywords}
+high availability, pacemaker, heartbeat, drbd, linux, filesystem \emptydoublepage
+
+\tableofcontents \emptydoublepage
+
+%--------------------------------------------------------------
+\mainmatter
+
+\include{chapters/10_uvod}
+\include{chapters/20_vysoka_dostupnost}
+\include{chapters/30_technologie}
+\include{chapters/35_problemy}
+\include{chapters/40_kompletne_riesenia}
+\include{chapters/50_realizacia}
+\include{chapters/60_zaver}
+
+\input{chapters/0_skratky}
+
+%--------------------------------------------------------------
+\backmatter
+%Bibliografia
+%\phantomsection
+%\nocite{*}
+\bibliographystyle{ieeetr}
+\bibliography{bibliografia}	\emptydoublepage
+
+\listoffigures \emptydoublepage
+\listoftables
+
+\end{document}
+
+% Dlhe url v bibliografii
+%http://tex.stackexchange.com/questions/10924/underfull-hbox-in-bibliography

@@ -1,0 +1,99 @@
+\chapter{Vysoká dostupnosť}
+V tomto oddiele sa budem venovať priblíženiu pojmu vysokej dostupnosti a bežným riešeniam, ktoré sa používajú na riešenie tejto problematiky. Predvediem spôsob počítania dostupnosti z manažérskeho pohľadu a problém v rozlíšení nedostupnosti systému a služby.
+
+\section{Čo je vysoká dostupnosť}
+Vysoká dostupnosť, tiež nazývaná \ac{RAS} označuje počítačový systém, ktorý sa dokáže rýchlo obnoviť z výpadku. Môže nastať minúta alebo dva nedostupnosti, počas ktorých systém migruje, potom ale bude ďalej pokračovať v činnosti bez zásahu administrátora. Neznamená to to isté ako fault-tolerant systém, kde je nepretržitá prevádzka navrhovaná tak, aby bolo možné pokračovať pri výpadku bez jeho zaznamenania. Systémy vysokej dostupnosti tiež umožňujú upravovať jednotlivé komponenty systému, alebo reštartovať jednotlivé servery bez nutnosti celé riešenie dočasne odstaviť\cite{web:pcmag.com-ha}.
+
+Vysoká dostupnosť môže byť pochopená viacerými spôsobmi. Musíme rozlišovať, či hovoríme o plánovanej alebo neplánovanej nedostupnosti. Plánovaná nedostupnosť zahŕňa prípady kedy systém vypneme zámerne, či už v dôsledku reštartu po inštalácii, aktualizácií, alebo zmene konfigurácie systému. Tomu zvyčajne predchádzajú prípravy takejto udalosti na úrovni managementu a taktiež komunikácie so zákazníkmi. Neplánované výpadky sú tažko predvídateľné a ich príčiny môžu byť rôzneho pôvodu - od hardwarových a softwarových problémov až po chyby ľudí a prírodné katastrofy. Príkladom môžu byť výpadky RAM pamätí, pevných diskov, procesorov, sieťovej infraštruktúry, alebo útoky z internetu. Plánované výpadky nemajú veľký vplyv na obavy o dostupnosť systémov, keďže sú realizované prevažne v časoch, kedy tieto systémy nie sú využívané a zákazníci sa na nich môžu dopredu pripraviť.
+
+Ako najjednoduchšie riešenie sa v praxi používa pravidelné zálohovanie. Zálohovanie síce rieši problém obnovy dát a všetky seriózne firmy dôležité dáta zálohujú, ale to je len prvý a krátkozraký krok, pretože obnova záloh je zdĺhavý proces sprevádzaný výpadkom. Trvanie nedostupnosti môže tvať niekoľko hodín, až dní v závislosti od závažnosti a času poruchy. Pri obnove zo záloh je totiž často potrebné zaobstarať hardware podobný tomu predchádzajúcemu, nainštalovať pôvodný operačný systém, potrebné aplikácie a značnú dobu tiež trvá kopírovanie veľkého množstva dát. Tiež sa líši reakčná doba v pracovnom čase a počas víkendu. Trvanie výpadku v rádu hodín alebo dní je však často neakceptovateľné.
+
+V mnohých prípadoch je výpadok systému tolerovateľný len počas niekoľkých sekúnd. Ak na pár minút prestane fungovať elektronická pošta alebo konferenčné hovory tak si väčšina ľudí ide uvariť kávu. Avšak v prípade, že sa v letovej veži namiesto polohy lietadiel ukáže čierna obrazovka, je tento stav tolerovateľný len na pár sekúnd. Software použitý v praktickej časti (Pacemaker) slúži okrem iného práve na udržanie stálej prevádzky letovej spoločnosti DFS.
+
+Systémy vysokej dostupnosti síce nie sú životne dôležité v každej situácii, avšak väčšina poskytovateľov elektronických služieb k nim smeruje už len z dôvodu prilákania zákazníkov. Či už ako marketingový plán alebo spôsob ako predísť migrácii klientov ku konkurencii v dôsledku príležitostnej nedostupnosti ich služieb. Napríklad hostingy internetových stránok často ponúkajú priestor zdarma. Od plateného sa väčšinou líši okrem iného aj garantovanou dostupnosťou.
+
+Pri počítaní dostupnosti systému treba brať do úvahy aj rozhodnutie ako pristupovať k nedostupnosti konkrétnej služby. Nie sú výnimočné prípady kedy je operačný systém v poriadku, ale konkrétna aplikácia neodpovedá. Stáva sa to napríklad pri preťažení aplikácie väčším množstvom požiadavkov ako je schopná spracovať, aj keď je systém v poriadku. Vidíme, že v tomto prípade sa bude aplikácia užívateľom javiť ako nedostupná a zároveň administrátor môže tvrdiť 100\% dostupnosť.
+
+Dopady systémových výpadkov sa dajú rozdeliť na krátkodobé a dlhodobé. Medzi tie krátkodobé patria stratený zisk a produktivita. Ich cena sa vyčísľuje oveľa ľahšie, avšak často tvoria len špičku ľadovca. Z dlhodobého hľadiska firma prichádza o svoje dobré meno, lojalitu zákazníkov, investorov. Výnimkou nie sú zmluvné pokuty, počítať treba aj s cenou obnovenia dát. Plný dopad trojdňového výpadku dobre znázorňuje príklad firmy RIM (BlackBerry), ktorá vyčíslila straty vo výške 54 miliónov dolárov. Na obrázku \ref{image_downtime-cost} je vidieť odhadovaný dopad hodinového výpadku pre rôzne odvetvia.
+
+\myFigure {downtime-cost} {Cena hodinového výpadku v rôznych odvetviach \cite{pdf:managing-the-cost-of-downtime}} {Cena hodinovej nedostupnosti}
+
+V praxi je často spomínaná percentuálna dostupnosť systémov, definovaná aj ako "`počet deviatok"'. Na prvý pohľad sa môže zdať číslo 99\% veľa, z obrázku \ref{image_availability} však možno vyčítať, že tomu odpovedajúca doba výpadku môže byť nepríjemná a to najmä v závislosti na čase kedy sa vyskytne. Vysoká dostupnosť zvyčajne znamená 3 a viac deviatok a počítajú sa do nej aj plánované výpadky \cite{pdf:ha-and-disaster-recovery}.
+
+\myFigure {availability} {Percentná dostupnosť v závislosti na dobe dostupnosti systému \cite{pdf:ha-blueprints}} {Dostupnosť v percentách}
+
+Konfigurácie využívajúce vysokú dostupnosť sú využívané predovšetkým v odvetviach, kde by výpadok mal veľký dopad na užívateľov a tých ktoré vyžadujú 24-hodinovú prevádzku, napríklad nemocnice, banky, letecké spoločnosti alebo nukleárne zariadenia.
+
+Pri predstavení pojmu vysoká dostupnosť je potrebné vysvetliť význam ďalšej dôležitej skratky \ac{SPOF}. Tento všeobecný pojem sa používa pre komponent systému ktorý v prípade chyby spôsobí znefunkčnenie celého systému. Pritom nezáleží či je komponent hardwarový, softwarový alebo elektrický. Príkladom môže byť napájanie vysoko dostupného serverového klastra z jedného elektrického zdroja. V prípade chyby zásuvky je celá redundantná infraštruktúra zbytočná \cite{pdf:ha-blueprints}.
+
+\section{Test desiateho poschodia}
+Tento termín vymyslel Steve Traugott a týka sa situácie kedy potrebujeme obnoviť prevádzku systému do pôvodného stavu a to v čo najkratšom čase po výpadku. Test je založený na jednoduchej otázke "`Môžem zobrať akýkoľvek bežiaci stroj ktorý nikdy nebol zálohovaný a vyhodiť ho z desiateho poschodia tak, aby firma neprišla o dáta a obnoviť pôvodnú prevádzku v intervale 5-10 minút?"' Ak môžte odpovedať áno, testom ste prešli \cite{web:infrastructures.org}.
+
+Práca systémových a aplikačných administrátorov vo veľkých firmách spočíva aj v príprave na takéto úlohy. Nie je výnimkou, že sa pravidelne testuje pripravenosť personálu obnoviť pôvodnú prevádzku vypnutím niektorého z počítačov - samozrejme v kontrolovaných podmienkach a s možnosťou opätovného nasadenia pôvodného systému v prípade poruchy.
+
+\section{Ako je možné zvýšiť dostupnosť}
+%http://networksandservers.blogspot.com/2011/02/high-availability-solutions.html
+
+Existuje obrovské množstvo spôsobov ako zabezpečiť, že systémy budú fungovať stabilnejšie a vydržia dlhšie. Tým najjednoduchším je často nákup kvalitného hardwaru a pravidelná aktualizácia, avšak každý komponent má obmedzenú životnosť a istú náchylnosť k pokazeniu sa. V nasledujúcich odstavcoch zhrniem tie najpoužívanejšie so zameraním na tri hlavné oblasti.
+
+\subsection{Dostupnosť úložného priestoru}
+Dáta sú základným kameňom, na ktorom stavia každá firma. Či už sú to firemné faktúry, zoznamy zákazníkov alebo internetové stránky, žiadna firma si nemôže dovoliť o ne prísť. Je nepredstaviteľné že by banka svojim klientom oznámila, že stratila záznamy o paňažných zostatkoch na ich účtoch. Tieto informácie sú uchovávané na pevných diskoch, ktorých dostupnosť sa dá zvýšiť jedným z nasledujúcich spôsobov.
+
+\subsubsection{RAID}
+\label{lbl:sec:raid}
+Toto riešenie používa takmer každá firma - či už malá alebo veľká. \ac{RAID} môže byť hardwarový aj softwarový. Každý z nich má svoje výhody:\cite{web:cyberciti.biz}
+
+\begin{description}
+	\item[Softwarový] raid je zvyčajne zdarma ako súčasť operačného systému a poskytuje častokrát väčšiu konfiguračnú flexibilitu. S vývojom CPU sa do istej miery zvyšuje aj výkon RAIDu, avšak niekedy je práve tento výkon potrebný pre iné aplikácie, čo môže byť nevýhodou. Nástroje na ich správu a konfiguráciu sú zvyčajne špecifické pre daný operačný systém, čo vyžaduje viac času administrátorov. Softwarový raid je vhodnejší pre použitie doma alebo v menších firmách. Známy nástroj na konfiguráciu RAIDu v linuxe je napríklad mdadm.
+	\item[Hardwarový] raid je fyzická karta, ktorá samozrejme nie je zdarma. Ich cena však prináša radu výhod, ako odbremenenie CPU a RAM alebo jednoduchšiu správu. Každá karta je však špecifická v závislosti na výrobcovi, čoho následkom je menej dostupná technická špecifikácia. Systém sa stáva závislým na konkrétnej karte, čo môže byť problém v prípade jej chyby a nutnosti obnovy dát pomocou iného hardwaru. Možnosti konfigurácie sa veľmi líšia v závislosti na type karty a typicky aj cene. V prípade chyby výhodu predstavuje jednoduchšia výmena diskov a podpora hot-swap. Hardwarový raid je vhodný najmä pre systémy s vysokou záťažou.
+\end{description}
+
+RAID pole je možné rozlíšiť podľa spôsobu zapojenia diskov \cite{pdf:ha-blueprints}. Tie bežné sa označujú číslovaním od RAID-0 po RAID-6. Existuje však mnoho iných konfigurácií. Niektoré z nich je možné kombinovať, čoho príkladom je RAID-10. Jedny z najrozšírenejších sú nasledujúce tri typy:
+\begin{description}
+	\item[RAID-0] sa vyznačuje nulovou tolaranciou k poškodeniu disku. V praxi takéto zapojenie vyzerá ako keby sme sériovo spojili 2 disky. Jeho výhodou je predovšetkým zvýšenie rýchlosti prístupu k disku a zmenšenie počtu diskových jednotiek - spája menšie disky do jedného väčšieho.
+	\item[RAID-1] niekedy nazývaný ako zrkadlenie diskov. Disky sú zapojené paralelne a majú rovnaký obsah. Tento spôsob je využívaný v prípade, kedy kladieme dôraz na zachovanie dát v prípade chyby jedného z diskov. Zlyhanie užívateľ nezaznamená, všetky operácie prebiehajú na vrstve pod súborovým systémom.
+	\item[RAID-5] vyžaduje minimálne 3, bežne sa však používa 5 diskov. V tomto zapojení sú disky reťazené a zároveň je časť z nich využitá na redundanciu. V prípade výpadku niektorého z nich sú stratené dáta dopočítané zo zvyšných diskov. Je vyhľadávaný hlavne kôli svojej nízkej cene, avšak nie je vhodný pre systémy, ktoré kladú dôraz na vysoký výkon.
+\end{description}
+
+Systém RAID rieši len problém na úrovni výpadku diskov, nie dostupnosť celého systému (aj keď k nej prispieva). Ak nastane chyba v akomkoľvek inom hardwarovom komponente, nastane výpadok. RAID taktiež nerieši chyby ľudského faktoru a aplikácií a v žiadnom prípade nie je náhradou pravidelného zálohovania.
+
+\subsubsection{SAN}
+\ac{SAN} je vysoko rýchlostná dedikovaná sieť, ktorá spája rôzne druhy dátových zariadení s asociovanými servrami. Jednoduchšie povedané je to sieť, ktorá spája počítače so zariadeniami na ukladanie dát. Na vybudovanie takejto siete je možné použiť viacero technológií, napríklad Fibre Channel alebo iSCSI. Technológia SAN podporuje zrkadlenie diskov, zálohovanie, obnovu a migráciu dát z jedného úložného zariadenia na iné a zdieľanie dát medzi rôznymi servrami v sieti. Oproti lokálnym diskom má viacero výhod \cite{web:storage-area-network-1-uvod}:
+
+\begin{itemize}
+	\item Odstraňuje vzdialenostné limity lokálne pripojených diskov
+	\item Zvyšuje výkon, dáta sú dostupné rýchlosťou v jednotkách Gb/s
+	\item Zvyšuje spoľahlivosť umožnením viacerých prístupových ciest k úložisku
+	\item Jednoduchšie možnosti obnovy po havárii. Diskové polia môžu byť zrkadlené do iných lokalít
+	\item Jednoduchšia administrácia a flexibilita, keďže káble a úložiská dát nemusia byť fyzicky presúvané ak ich chceme premiestniť na iný server
+\end{itemize}
+
+\subsubsection{NAS}
+Sieťové úložisko alebo \ac{NAS} je počítač s pripojením na sieť, ktorý má fungovať ako dátové úložisko pre ostatné zariadenia. NAS zvyčajne nemajú konektory pre display alebo klávesnicu. Namiesto toho sú konfigurovateľné pomocou webového rozhrania. Ich operačný systém je často upravený a okresaný. Úložisko dát sa zvykne rozkladať na hot-swap diskovom poli v RAIDe. Pre prístup k dátam NAS používa protokoly ako \ac{NFS} na unixových systémoch alebo \ac{SMB} známy aj pod prezývkou Samba, ktorý je populárny na Windowsoch.
+
+Oproti SAN systémom sú jednoducho konfigurovateľné a ich správa je jednoduchá. NAS nie je použitím limitovaný len ako dátové úložisko pre klientské a serverové stanice. Umožňuje jednoduché a nízkonákladné riešenie dátového úložiska pre servery s rozložením záťaže alebo s toleranciou k výpadku.
+
+Hlavné rozdiely medzi SAN a NAS sa dajú zosumarizovať do troch bodov:\cite{web:Difference-Between-NAS-and-SAN-3-Considerations}
+\begin{itemize}
+	\item Pričinok vs disk: NAS poskytuje súborový systém (NFS, SMB), naproti tomu SAN poskytuje blokové zariadenie. Klientski sa tak musia v druhom prípade postarať o vlastný súborový systém.
+	\item Výkon vs cena: SAN je zvyčajne viac výkonný ako NAS, čo sa prejavuje aj v jeho cene. Pretože SAN využívajú technológiu Fibre Channel, poskytuje oveľa vyššie rýchlosti ako IP siete
+	\item Jednoduchosť: NAS zariadenia zvyčajne fungujú priamo po vybalení z krabice alebo s minimálnou konfiguráciou.
+\end{itemize}
+
+Rozdiel v použití v sieťovom zapojení môžme vidieť na obrázku \ref{image_san-vs-nas}
+\myFigure{san-vs-nas}{Roziel v možnosti sieťového zapojenia NAS a SAN\cite{web:Difference-Between-NAS-and-SAN-3-Considerations}} {Zapojenie NAS vs SAN}
+
+\subsection{Dostupnosť aplikácií}
+Keď máme dátove úložisko dostatočne chránené proti výpadku, je potreba sa sústrediť na vyššiu vrstvu - aplikácie. Tie sú práve nástrojom, ktorý využívajú klienti, takže sú nedeliteľnou súčasťou každého systému. Ich dostupnosť sa dá rovnako ako pri dátovom úložisku zabezpečiť viacerými spôsobmi.
+
+\subsubsection{Failover}
+Failover znamená uvedenie náhradného systému do prevádzky v prípade, že primárny systém zlyhá. Aktuálne kópie všetkých požadovaných dát a aplikácií sú udržiavané na sekundárnom systéme, aby ho bolo možné spustiť v čo najkratšom čase. \cite{web:pcmag.com-failover}
+Failover je dôležitou súčasťou kritických systémov, keďže automaticky presmeruje užívateľské požiadavky na záložný systém, ktorý má rovnakú alebo podobnú funkcionalitu ako ten pôvodný.
+
+\subsubsection{Load balancing}
+Pod pojmom load balancing sa rozumie rovnomerné rozloženie záťaže na dostupné servry v sieti, prípadne na disky v SAN. Vysoko dostupné aplikácie môžu fungovať na tomto princípe rozložením požiadavok medzi viaceré servery, ktoré v prípade výpadku niektorého z nich preberú jeho prácu. Podobne funguje aj Linux Virtual Server, ktorý popíšem bližšie v kapitole \ref{chap:mozne_riesenia}.
+
+\subsection{Dostupnosť siete}
+Nedeliteľnou súčasťou systémov vysokej dostupnosti je zabezpečenie dostupnosti siete. To sa dosahuje napríklad použitím záložných sieťových prvkov či náhradných pripojení. Aj keď je táto oblasť vysokej dostupnosti dôležitá, v práci sa venujem dostupnosti súborových systémov a aplikácií, preto sa riešením siete nebudem zaoberať.
+
+\emptydoublepage

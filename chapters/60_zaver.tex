@@ -1,0 +1,10 @@
+\chapter*{Záver}
+\addcontentsline{toc}{chapter}{\protect\numberline{}Záver}
+
+Na začiatku písania práce som si stanovil 1 teoretický a 2 praktické ciele. Cieľom teoretickej časti bolo uviesť čitateľa do problematiky vysokej dostupnosti aplikácií a dátových úložísk. V praktickej časti som jedno z týchto riešení realizoval a porovnal rýchlosti a vhodnosť rôznych súborových systémov použiteľných v danej konfigurácii.
+
+Výsledky testov značne ovplyvnila hardwarová konfigurácia, na ktorej som ich realizoval. Pri použití jediného fyzického disku sa veľké rozdiely v rýchlosti práce s veľkými blokmi dát neprejavili. Značné rozdiely však ukázali testy práce s metadátami súborov, kedy súborové systémy ext3, ext4 a reiserfs dosahovali mnohonásobne vyššie rýchlosti ako jfs, zfs, ntfs a ocfs2.
+
+Riešenie som realizoval pomocou DRBD pre zabezečenie vysokej dostupnosti dát a Pacemakeru pre aplikácie. Obe tieto nástroje sú voľne dostupné. Vo svojej práci Tomáš Zvala zmieňuje nezrelosť voľne dostupných projektov, avšak ja som pri inštalácii a konfigurácii nenarazil na žiadne zásadné problémy. Finálna konfigurácia pracuje podľa očakávaní.
+
+\emptydoublepage

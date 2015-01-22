@@ -1,0 +1,14 @@
+\chapter*{Úvod}
+\addcontentsline{toc}{chapter}{\protect\numberline{}Úvod}
+
+V dnešnej dobe sa kladie čoraz väčší dôraz na zabezpečenie nepretržitej dostupnosti služieb, ktoré sú pre firmu kľúčové. Niektoré systémy, ako napríklad DNS už vo svojom návrhu počítali s tým, že hardware má obmedzenú životnosť a dokážu fungovať aj pri poruche časti infraštruktúry. Avšak vzhľadom na náklady, čas a určenie mnohých programov nie všetky je možné vyvíjať spolu s prvkami, ktoré zabezpečia ich dostupnosť aj v prípade poruchy. Preto vznikli systémy, pomocou ktorých je možné automaticky riadiť migráciu procesov medzi jednotlivými počítačmi a tým dosiahnuť čo najkratšiu doby nedostupnosti systému.
+
+V mojej práci sa práve týmto systémom venujem. Pokúsim sa objasniť čitateľom základné princípy, na ktorých dnešné riešenia fungujú. Cieľom práce je poskytnúť prehľad o možných riešeniach a detailne popísať a otestovať jedno z voľne dostupných riešení. Práca poslúži čitateľovi k oboznámeniu sa s problematikou a získa základný prehľad o systéme fungovania týchto systémov.
+
+Samotný dokument je rozčlenený na teoretickú a praktickú časť. V teoretickej časti sa čitateľ dozvie čo vlastne vysoká dostupnosť je a v akých oblastiach sa využíva. Ďalej bude nasledovať popis rôznych softwarových riešení, ktoré je možné využit k jej dosiahnutiu a zhrnutie najznámejších problémov, na ktoré je potreba myslieť pri realizácii samotného riešenia. Na záver teoretickej časti spomeniem niektoré najznámejšie softwarové produkty z tejto oblasti. V praktickej časti realizujem jedno z voľne dostupných riešení a jej súčasťou budú aj testy porovnávajúce výkonnosť rôznych súborových systémov. Konfigurácia týchto testov môže poslúžiť ako základňa pre ďalšie testovanie a zároveň pomôcť s výberom konkrétneho riešenia v závislosti na cieľovom prostredí.
+
+Vo svojej práci som čerpal z množstva materiálov dostupných prevažne online. Čiastočne som využil aj prácu Tomáša Zvalu\cite{tomaszvala} o vysokej dostupnosti dát na virtuálnych serveroch, ktorú som rozšíril napríklad o pohľad na systémy zabezpečujúce automatické migrovanie procesov v prípade výpadku, podrobnejší popis vybraných oblastí a testy rýchlostí súborových systémov. Využil som tiež prácu, ktorú napísal Radek Zima\cite{radekzima}, konkrétne časť popisujúcu možnosti ukladania dát.
+
+Pri písaní som sa značne opieral o dokumentáciu riešení Pacemaker, DRBD a RHCS.
+
+\emptydoublepage

@@ -1,0 +1,52 @@
+\section{Split-brain}
+Pojem split-brain neoznačuje priamo technológiu, definuje však problém, ktorý z jej využitia vyplýva. Preto popíšem čo sa pod názvom split-brain skrýva a zmienim metódy, ktoré tento problém riešia.
+
+Po prvotnom zoznámení s funkcionalitou Pacemakeru a iných HA riešení môže vzniknúť otázka, či je to naozaj také jednoduché. Veď len spúšťa, zastavuje a kontroluje procesy podľa vopred nakonfigurovaných pravidiel. Pri realizácii ale narazíme na problém s názvon split-brain. To je situácia, kedy sa kvôli výpadku komunikácie klaster rozdelí na 2 alebo viacero častí, ktoré začnú fungovať nezávisle na sebe. Obe časti sa pritom domnievajú, že práve tá druhá je nefunkčná. V lepšom prípade sa nič nestane, v horšom ostane disk plný poškodených dát.
+
+Jadro problému spočíva v neschopnosti rozlíšiť či je počítač vypnutý alebo len prestal komunikovať so svojim okolím. Aký je v tom rozdiel? Predstavme si nasledujúcu situáciu \cite{web:split-brain-quo}:
+
+Máme 3 počítače, Adam, Eva a Tom zapojené v klastri. Tom má pripojené vzdialené úložisko dát (diskové pole). Zrazu ale Tom prestane fungovať a nedá sa naňho pripojiť. Môžme bezpečne pripojiť diskové pole na Adama a pokračovať v prevádzke? Čo ak je Tom stále zapnutý a na disk zapisuje? Ocitneme sa v situácii kedy na disk zapisujú súčasne dva počítače, a to môže ľahko skončiť znehodnotením dát na ňom.
+
+Jednoduchým riešením by bola redundancia komunikácie medzi nódmi, napríklad záložné wifi spojenie. Stále ale môže nastať situácia, kedy sa stane niečo nepredvídané a server prestane komunikovať. Preto je potrebné nastaviť fencing.
+
+\subsection{Fencing}
+Fencing je riešenie postavené na "`oplotení"' chybného nódu. To mu zabráni pristupovať k zdieľaným prostriedkom, v tomto prípade k disku. Vyriešil sa tak problém kedy bolo nemožné odpovedať na otázku či je počítač vypnutý alebo nedostupný - teraz na odpovedi nezáleží.
+
+Riešenie pomocou odstrihnutia sa dá realizovať dvoma spôsobmi:
+\begin{description}
+	\item[Na úrovni zdrojov] Týmto prístupom zabránime chybnému počítaču, aby pristupoval k jednotlivým zdrojom, ktoré využíva. Napríklad ak by bol zdieľaný disk pripojený pomocou switchu, bolo by možné zakázať prístup k tomuto disku na úrovni switchu.
+	\item[Na úrovni nódov] Pri tomto spôsobe nie je potrebné sa zaoberať tým, aké zdroje nód využíva, alebo ako mu k nim zabrániť prístup - zvyčajne ho jednoducho reštartujeme. Je to jednoduchšie, aj keď trochu drastickejšie riešenie, realizované pomocou techniky nazývanej \ac{STONITH}. 
+\end{description}
+
+Dôležitým znakom techniky oplotenia je, že k jeho realizácii nepotrebujeme akékoľvek informácie z chybného nódu, alebo jeho spoluprácu.
+
+Pokračujem v príklade:
+Adam a Eva použijú fencing a zabránia tak Tomovi aby zapisoval na zdieľaný disk. Adam si pripojí disk a môže pokračovať v bežnej prevádzke. Avšak čo zatiaľ robí Tom? Ak je stále zapnutý tak isto zistil že Adam a Eva sú nedostupní. Rovnako ako oni sa snaží oplotiť chybné prvky (z jeho pohľadu Adama a Evu). Ktorý z nich bude prvý? Týmto spôsobom je možné sa dostať až do cyklu, kedy sa nódy budú pri spustení navzájom reštartovať. Takéto nepredvídateľné správanie je nepriateľné, a tak je nutné využiť ďalšiu techniku - hlasovacie quorum.
+
+\subsection{Quorum}
+Quorum je technika, ktorou je možné zistiť, ktorá časť pôvodného klastra by mala ostať aktívna pri výpadku - je jej povolené zapínať služby. Najjednoduchšou technikou je vybrať tú skupinu, ktorá obsahuje viac počítačov.
+Toto riešenie so sebou ale prináša jeden problém. Čo v prípade ak sa klaster skladá len z dvoch serverov? Pri výpadku komunikácie medzi nimi žiaden nemá väčšinu, takže žiaden nemôže spúšťať procesy. Nutnosť získať quorum sa síce v konfigurácii dá vypnúť, ale nedoporúča sa to. Existujú hardwarové aj softwarové metódy, ktoré tento problém riešia.
+
+Metód je veľa, napríklad:
+\begin{itemize}
+	\item Hardwarovou metódou môže byť vyhradenie partície na externom disku dostupnej obom nódom. Ktorý nód dokáže túto partíciu pripojiť, ten sa považeje za funkčný
+	\item Softwarovým riešením môže byť quorum démon. Existuje viacero implementácií, napríklad od Linux-HA. Funguje podobne ako prvá metóda, ale prináša niektoré výhody. Napríklad dokáže spoľahlivo fungovať pri väčších geografických vzdialenostiach
+	\item Riešením môže byť aj uprednostnenie toho nódu, ktorý dokáže komunikovať s IP adresou na vonkajšej sieti. Je to síce najjednoduchšie, ale v prípade že zlyhá komunikácia medzi dvoma nódmi a pripojenie na internet ostane funkčné problém ostáva nevyriešený
+\end{itemize}
+
+V mojom príklade Adam a Eva tvoria väčšinu, získali quorum a môžu spúšťať procesy. Tom aj bez toho aby komunikoval vie, že má len 1 hlas z 3, takže (podľa konfigurácie) môže byť reštartovaný, prípadne počkať na zásah správcu \cite{web:split-brain-quo}.
+
+\subsection{Stonith}
+Pod touto skratkou vystupuje zariadenie, fungujúce presne podľa svojho názvu - jeho úlohou je zastreliť druhý nód. To znamená, že ho čo najrýchlejšie vypne alebo odpojí od zdrojov tak, aby nemohol vplývať na funkčnosť zvyšku klastra. Odstrelený nód sa totiž po reštarte dostane v rámci klastra do submisívneho postavenia a tým mu zabránime replikovať poškodené dáta na ostatné nódy \cite{web:felk.cvut.cz}.
+
+Realizovať \ac{STONITH} môžme viacerými spôsobmi, z ktorých je dobré vybrať ten čo najmenej závisiaci na zvyšku systému. Delia sa do 5 základných kategórií \cite{web:opensuse.org}:
+
+\begin{enumerate}
+	\item UPS (Uninterruptible Power Supply) Poskytujú kontrolu záťaže a monitorovanie zariadení. Taktiež umožňujú individuálnu kontrolu napájania jednotlivých serverov
+	\item PDU (Power Distribution Unit) Zdroj napájania cez ktorý sú pripojené ostatné zariadenia. V prípade výpadku zabezpečuje dočasnú dodávku energie
+	\item Blade power control zariadenia sú vhodným riešením ak je klaster postavený na niekoľkých blade servroch. Musí ale byť schopný ovládať jednotlivé počítače
+	\item Lights-out zariadenia sú menej kvalitné ako UPS, pretože zdieľajú zdroj napájania so svojím hostiteľom
+	\item Testovacie zariadenia sú zvyčajne viac zhovievavé k hardwaru, vypínajú počítač "`jemnejšie"'. Mali by sa však využívať len pre testovacie účely. V produkčnom prostredí ich nahradzujú skutočné STONITH zariadenia.
+\end{enumerate}
+
+Väčšina pluginov umožňuje reštartovať alebo vypnúť chybný nód. Nie vždy je však vhodné štartovať CRM pri štarte OS, pretože je možné dostať sa do stavu kedy nód naštartuje a začne plne fungovať bez toho, aby sme mali šancu diagnostikovať čo bolo príčinou výpadku.

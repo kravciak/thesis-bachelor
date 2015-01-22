@@ -1,0 +1,103 @@
+% ========== Notes
+%http://gcharriere.com/blog/
+%Stonith / Cluster Glue
+%Resource Agents (http://linux-ha.org/wiki/Resource_Agents)
+
+Think of Heartbeat and Corosync as dbus but between nodes. Somewhere that any node can throw messages on and know that they’ll be received by all its peers. This bus also ensures that everyone agrees who is (and is not) connected to the bus and tells Pacemaker when that list changes.
+
+
+Resource agent je program (vetsinou skript), ktery umi zjistit stav, pripadne vypnout/zapnout, povysit na mastera (a naopak) atp. nejaky konkretni sluzby. 
+Ocf je standart, ktery definuje jak se ma takovy resource agent navenek chovat (navratove hodnoty, povinne metody, atp) + par uzitecnych funkci.
+
+IBM General Parallel File System
+vyuzitie pre jabber?
+co je iSCSI?
+ocfs, glusterfs, mogilefs, pvfs2, chironfs, xtreemfs etc.
+
+GFS/OCFS is about sharing the block device. NFS/PNFS/GlusterFS is about sharing the filesystem (and DRBD seems like a nice solution to replicate block devices)
+
+%http://rackerhacker.com/2010/12/02/keep-web-servers-in-sync-with-drbd-and-ocfs2/
+%http://rackerhacker.com/redundant-cloud-hosting-configuration-guide/
+
+Open Cluster Framework (OCF) specification
+
+These resource agents are used by two cluster resource
+management implementations:
+- Pacemaker
+- rgmanager
+
+
+LVS + ldirectord (heartbeat)
+http://horms.net/projects/ldirectord/
+http://www.linuxvirtualserver.org/
+
+Ultra Monkey (High Availability and Load Balancing)
+http://www.ultramonkey.org/3/lvs.html
+http://www.ultramonkey.org/3/topologies/
+
+
+Alternativa - ked mame load-balancer a viacero pocitacov (detekuje vypadky asi len na urovni pocitacov?)
+
+http://www.gregarnette.com/blog/2011/06/re-thinking-slas-in-a-cloudy-world/
+
+TODO:
+podmienky pre aplikacie aby mohli byt ha - http://en.wikipedia.org/wiki/High-availability_cluster (+Node reliability)
+
+Common Address Redundancy Protocol
+
+filesystemy
+https://wiki.ubuntu.com/ZFS
+http://www.serverfocus.org/reiserfs-vs-ext4-vs-xfs-vs-zfs-vs-btrfs#zfs
+
+ubuntu primary/primary + failover testing
+https://wiki.ubuntu.com/Testing/Cases/UbuntuServer-drbd
+
+x forwarding
+http://aruljohn.com/info/x11forwarding/
+
+
+
+\begin{lstlisting}
+root@eva:~# crm configure show
+node adam
+node eva
+primitive ClusterIP ocf:heartbeat:IPaddr2 \
+        params ip="192.168.45.101" cidr_netmask="24" \
+        op monitor interval="30s"
+primitive DRBD ocf:linbit:drbd \
+        params drbd_resource="r0"
+primitive fs_ext4 ocf:heartbeat:Filesystem \
+        params device="/dev/drbd0" directory="/mnt" fstype="ext4" \
+        meta target-role="Started"
+ms msDRBDclone DRBD \
+        meta master-max="1" master-node-max="1" clone-max="2" clone-node-max="1" notify="true"
+colocation drbd-with-ip inf: ClusterIP fs_ext4
+colocation fs_on_drbd inf: fs_ext4 msDRBDclone:Master
+order fs_ext4-after-DRBD inf: msDRBDclone:promote fs_ext4:start
+property $id="cib-bootstrap-options" \
+        dc-version="1.1.6-9971ebba4494012a93c03b40a2c58ec0eb60f50c" \
+        cluster-infrastructure="openais" \
+        expected-quorum-votes="2" \
+        stonith-enabled="false" \
+        no-quorum-policy="ignore"
+rsc_defaults $id="rsc-options" \
+        resource-stickiness="100"
+\end{lstlisting}
+
+
+\begin{lstlisting}
+root@adam:~# bonnie++ -d /mnt/test/ -m ext4 -u kravciak:kravciak
+	Using uid:1000, gid:1000.
+	Writing a byte at a time...done
+	Writing intelligently...done
+	Rewriting...done
+	Reading a byte at a time...done
+	Reading intelligently...done
+	start 'em...done...done...done...done...done...
+	Create files in sequential order...done.
+	Stat files in sequential order...done.
+	Delete files in sequential order...done.
+	Create files in random order...done.
+	Stat files in random order...done.
+	Delete files in random order...done.
+\end{lstlisting}

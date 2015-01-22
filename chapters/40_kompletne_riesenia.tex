@@ -1,0 +1,41 @@
+\chapter{Možné riešenia}
+\label{chap:mozne_riesenia}
+
+%http://advosys.ca/viewpoints/2007/01/linux-high-availability-clusters/
+Spôsobov ako postaviť vysoko dostupné riešenie je veľa, dostupných zdarma aj komerčných. V tejto kapitole sa budem venovať len niektorým z nich, zameriam sa hlavne na tie, ktoré som v praktickej časti využil. V práci sa nesústredím na výber toho najvhodnejšieho riešenia, preto niektoré z nich zmienim len okrajovo.
+
+\section{Linux-HA}
+Linux High-Availability je nekomerčným projektom. Pozostáva z viacerých komponentov, z ktorých každý zabezpečuje inú časť funkcionality. Najhlavnejšími z nich sú \cite{pdf:approaches-for-ha}:
+
+\begin{itemize}
+	\item démon zabezpečujúci komunikáciu serverov v klastri na sieťovej úrovni
+	\item manažér zodpovedný za spúšťanie skriptov a kontrolu behu jednotlivých služieb
+	\item sada skriptov slúžiaca na obsluhu jednotlivých služieb, napríklad pripájanie diskov a nastavenie sieťových rozhraní. Práve jeden z týchto skriptov používam v praktickej časti
+	\item databáza udržiavajúca konfiguráciu, ktorá je upravovaná na to určenými nástrojmi. Tieto nástroje tiež kontrolujú syntaktickú správnosť konfigurácie
+\end{itemize}
+
+Kedysi bol distrubovaný ako kompletné riešenie, časom sa však jednotlivé komponenty oddelili a je ich možné využiť aj v kombinácii s inými nástrojmi. V praktickej časti som použil manažéra procesov, ktorý vznikol vďaka tomuto projektu a ovládacie skripty.
+
+\section{Red Hat Cluster Suite}
+RHCS, najnovšie premenovaný na High Availability Add-On pokrýva dva rôzne kategórie vysokej dostupnosti, failover a IP load-balancing (pôvodne nazývaný Piranha). Písmeno "`R"' v RHCS naznačuje, že je dostupný len v RHEL, avšak nie je to tak. Balík je dostupný napríklad v CentOSe (prakticky RHEL bez licencie), Fedore alebo Ubuntu.
+
+Je rovnako ako Linux-HA zložený z komponent, ktoré sa podľa zamerania dajú rozdeliť do štyroch celkov, zabezpečujúcich infraštruktúru, manažment služieb, administráciu a load-balancing \cite{web:rhcs-dokumentacia}. Avšak predpoklad, že Red Hat všetky tieto komponenty sám vyvíja sa ukázal ako chybný. Niektoré z nich totižto využívajú open-source produkty, napríklad Corosync, LVS a plánuje aj prechod na Pacemaker. Pri inštalácii GFS2 v praktickej časti sa ako jedna zo závislostí preberá napríklad CMAN, ktorý je komponentou RHCS.
+
+\section{Linux Virtual Server}
+Linux Virtual Server pristupuje k problému vysokej dostupnosti iným spôsobom ako Linux-HA a RHCS. Nerieši ho na úrovni jednotlivých serverov v klastri, namiesto toho využíva load-balancer, na ktorý sa klienti pripájajú. Ten rozdeľuje požiadavky medzi servery. Load-balancer má tiež za úlohu periodicky kontrolovať dostupnosť serverov, na ktoré požiadavky posiela a v prípade že niektorý z nich neodpovedá tak ho prestane používať. Keď server opäť začne odpovedať začne ho opäť používať. Takýmto spôsobom efektívne maskuje nedostupnosť serverov. Tiež z pohľadu administrátora je jednoduché pridať ďalší server do klastra bez nutnosti reštartovať celý systém \cite{web:linux-virtual-server}.
+
+\section{Alternatívy}
+Ako som načrtol v úvode kapitoly, neexistuje jedno univerzálne riešenie, je ich veľa a líšia sa ako cenou tak určením. Za zmienku určite stoja:
+
+\begin{description}
+	\item[Solaris MC] je operačný systém pre počítače v klastri. Umožňuje skupine serverov vystupovať ako jeden výkonný počítač. Známy je jednoduchou administráciou. Software zabezpečujúci jeho vysokú dostupnosť sa nazýva Sun Cluster
+	\item[TurboLinux High Availability Cluster] obsahuje viacero komponentov zabezpečujúcich load-balancing, škálovateľnosť a vysokú dostupnosť. Virtualizuje viacero nezávislých serverov do spoločnej siete vystupujúcej pod jednou IP adresou
+	\item[Steeleye Lifekeeper] umožňuje klientom použitie vlastných skriptov, ktoré budú kompatibilné s Microsoft Cluster Suite. To však prichádza s obmedzením použitia buď Lifekeeperu alebo MCS, nie oboch zároveň
+	\item[Veritas Cluster Server] je produkt Symantecu fungujúci na Linuxe aj Windowse umožňujúci failover v prípade výpadku
+	\item[Microsoft Cluster Service] nájdeme v serverovej edícii Windows. Tam je jedným z troch komponentov zabezpečujúcich klastrovanie. Ďalšími sú Network Load Balancing a Component Load Balancing
+	\item[UCARP] je jednoduchý nástroj umožňujúci niekoľkým hostiteľom zdieľať IP adresu za účelom automatického failoveru
+\end{description}
+
+Ďalšie podobné produkty zahŕňajú napríklad Fujitsu PrimeCluster, HP Serviceguard, IBM PowerHA, NEC ExpressCluster, Oracle Clusterware alebo SUSE Linux Enterprise HA Extension.
+
+\emptydoublepage
